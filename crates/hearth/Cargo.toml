@@ -1,0 +1,47 @@
+[package]
+name = "hearth"
+description = "The self-hosted server for Bonfire"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+hearth-api = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+axum = { version = "0.8", features = ["ws", "multipart", "macros"] }
+axum-server = { version = "0.9", features = ["tls-rustls-no-provider"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.7", features = ["compression-gzip", "set-header"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "logging", "tls12"] }
+rcgen = "0.14"
+argon2 = "0.6"
+rand = "0.10"
+sha2 = "0.11"
+sha1 = "0.11"
+hmac = "0.13"
+time = { version = "0.3", features = ["local-offset"] }
+httpdate = "1"
+rustls-acme = { version = "0.15", default-features = false, features = ["ring", "tls12", "webpki-roots", "tokio"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = "0.3"
+blake3 = "1"
+strsim = "0.11"
+notify = "8"
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json", "form"] }
+base64 = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+tracing-appender = "0.2"
+open = "5"
+
+[dev-dependencies]
+tempfile = "3"
+tokio-tungstenite = "0.30"
+reqwest = { version = "0.13", default-features = false, features = ["cookies", "query"] }
+
+[build-dependencies]
+# Must match wasm-bindgen in crates/hearth-web/Cargo.toml exactly.
+wasm-bindgen-cli-support = "=0.2.130"
