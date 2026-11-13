@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # The first cargo call installs what rust-toolchain.toml pins, the wasm target included.
+      - run: cargo --version
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      # Every test binary runs even when one fails, so one round shows everything that is broken.
+      - run: cargo test --workspace --no-fail-fast
+
+  # A tag like v0.2.0 publishes a release. `hearth update` and the admin pages look for
+  # one file per platform named hearth-<target> (.exe on Windows) and a SHA256SUMS file.
+  build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    strategy:
+      matrix:
+        # Each runner builds for itself, so the file is named after what the program
+        # built there will ask for.
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release -p hearth
+      - shell: bash
+        run: |
+          target=$(rustc -vV | sed -n 's/^host: //p')
+          ext=""; [ "$RUNNER_OS" = "Windows" ] && ext=".exe"
+          mkdir dist
+          cp "target/release/hearth$ext" "dist/hearth-$target$ext"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hearth-${{ matrix.os }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: cd dist && sha256sum hearth-* > SHA256SUMS
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "Hearth ${GITHUB_REF_NAME#v}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
